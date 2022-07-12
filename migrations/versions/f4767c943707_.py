@@ -52,9 +52,6 @@ def upgrade():
     sa.ForeignKeyConstraint(['show_location'], ['venues.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.drop_table('Show')
-    op.drop_table('Venue')
-    op.drop_table('Artist')
     # ### end Alembic commands ###
 
 
@@ -96,7 +93,4 @@ def downgrade():
     sa.ForeignKeyConstraint(['location'], ['Venue.id'], name='Show_location_fkey'),
     sa.PrimaryKeyConstraint('id', name='Show_pkey')
     )
-    op.drop_table('shows')
-    op.drop_table('venues')
-    op.drop_table('artists')
     # ### end Alembic commands ###

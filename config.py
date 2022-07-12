@@ -7,9 +7,6 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 DEBUG = True
 
 # Connect to the databaseE
-   
-#pswd = open('pswd.txt', 'r')
-pswd = '' # enter password here...
 
-SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:{0}@localhost:5432/fyyur'.format(pswd)
+SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:2717@localhost:5432/fyyur'
 print(SQLALCHEMY_DATABASE_URI)
