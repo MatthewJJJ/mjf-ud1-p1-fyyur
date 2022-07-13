@@ -365,7 +365,7 @@ def create_artist_form():
 def create_artist_submission():
   # called upon submitting the new artist listing form
   try: 
-    already_exists = Artist.query.filter_by(art_name=request.form['name'])
+    already_exists = Artist.query.filter_by(art_name=request.form['name']).all()
     if len(already_exists) == 0:
       new_artist = Artist(
         art_name = request.form['name'],
