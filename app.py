@@ -41,6 +41,21 @@ def get_sorted_shows(data):
   past = []
   upcoming = []
   for element in data:
+      print(element)
+      format = "%Y-%m-%d %H:%M:%S"
+      dt_object = datetime.strptime(element['start_time'], format)
+      if now > dt_object:
+        past.append(element)
+      else:
+        upcoming.append(element)
+  return {'past': past, 'upcoming': upcoming}
+
+def get_sorted_shows_mod(data):
+  now = datetime.now()
+  past = []
+  upcoming = []
+  for element in data:
+      print(element)
       if now > element.start_time:
         past.append(element)
       else:
@@ -54,7 +69,7 @@ def venues():
   group_map = []
   aggregated_data = []
   for element in venue_data:
-    shows = get_sorted_shows(element.ven_shows)
+    shows = get_sorted_shows_mod(element.ven_shows)
     if f'{element.city}-{element.ven_state}' not in group_map:
       group_map.append(f'{element.city}-{element.ven_state}')
       aggregated_data.append({
@@ -79,7 +94,7 @@ def search_venues():
   data = db.session.query(Venue).filter(Venue.ven_name.like("%"+request.form.get('search_term', '')+"%")).all()
   aggregated_data = {"count": len(data), "data": []}
   for element in data:
-    shows = get_sorted_shows(element.ven_shows)
+    shows = get_sorted_shows_mod(element.ven_shows)
     aggregated_data["data"].append({
       "id": element.id, 
       "name": element.ven_name, 
@@ -91,27 +106,20 @@ def search_venues():
 def show_venue(venue_id):
   # shows the venue page with the given venue_id
   data = Venue.query.filter_by(id=venue_id)
-  upcoming_results = db.engine.execute(f"select * from venues join shows on shows.show_location=venues.id join artists on shows.artist=artists.id where venues.id={venue_id} and shows.start_time >= '{str(datetime.now().replace(microsecond=0))}'")
-  upcoming_shows = [row for row in upcoming_results]
-  upcoming_shows_aggregated = []
-  for up in upcoming_shows:
-    upcoming_shows_aggregated.append({
-        "artist_name": up['art_name'],
-        "artist_id": up['id'],
-        "artist_image_link": up['image_link'], 
-        "start_time": str(up['start_time'])
-      })
-  past_results = db.engine.execute(f"select * from venues join shows on shows.show_location=venues.id join artists on shows.artist=artists.id where venues.id={venue_id} and shows.start_time <= '{str(datetime.now().replace(microsecond=0))}'")
-  past_shows = [row for row in past_results]
-  past_shows_aggregated = []
-  for past in past_shows:
-    past_shows_aggregated.append({
-        "artist_name": past['art_name'],
-        "artist_id": past['id'],
-        "artist_image_link": past['image_link'], 
-        "start_time": str(past['start_time'])
-      })
+  if data.join(Show).join(Artist).all():
+    data = data.join(Show).join(Artist).all()
   venue = data[0]
+  aggregated_shows = []
+  for element in venue.ven_shows:
+    aggregated_shows.append(
+      {
+        "artist_name": element.art_list.art_name,
+        "artist_id": element.art_list.id,
+        "artist_image_link":element.art_list.image_link, 
+        "start_time": str(element.start_time)
+      }
+    )
+  aggregated_shows= get_sorted_shows(aggregated_shows)
   aggregated_data = {
     "id": venue.id,
     "name": venue.ven_name,
@@ -124,12 +132,13 @@ def show_venue(venue_id):
     "facebook_link": venue.facebook_link,
     "seeking_talent": venue.talent,
     "image_link": venue.image_link,
-    "past_shows": past_shows_aggregated, 
-    "upcoming_shows": upcoming_shows_aggregated,
-    "past_shows_count": len(past_shows_aggregated),
-    "upcoming_shows_count": len(upcoming_shows_aggregated)
+    "past_shows": aggregated_shows['past'], 
+    "upcoming_shows": aggregated_shows['upcoming'],
+    "past_shows_count": len(aggregated_shows['past']),
+    "upcoming_shows_count": len(aggregated_shows['upcoming'])
   }
   return render_template('pages/show_venue.html', venue=aggregated_data)
+
 
 #  Create Venue
 #  ----------------------------------------------------------------
@@ -197,7 +206,7 @@ def search_artists():
   data = db.session.query(Artist).filter(Artist.art_name.like("%"+request.form.get('search_term', '')+"%")).all()
   aggregated_data = {"count": len(data), "data": []}
   for element in data:
-    shows = get_sorted_shows(element.art_shows)
+    shows = get_sorted_shows_mod(element.art_shows)
     aggregated_data["data"].append({
       "id": element.id, 
       "name": element.art_name, 
@@ -207,29 +216,22 @@ def search_artists():
 
 @app.route('/artists/<int:artist_id>')
 def show_artist(artist_id):
-  #shows the artist page with the given artist_id
+  # shows the artist page with the given artist_id
   data = Artist.query.filter_by(id=artist_id)
-  upcoming_results = db.engine.execute(f"select * from artists join shows on shows.artist=artists.id join venues on shows.show_location=venues.id where artists.id={artist_id} and shows.start_time >= '{str(datetime.now().replace(microsecond=0))}'")
-  upcoming_shows = [row for row in upcoming_results]
-  upcoming_shows_aggregated = []
-  for up in upcoming_shows:
-    upcoming_shows_aggregated.append({
-        "venue_id": up['id'],
-        "venue_name": up['ven_name'],
-        "venue_image_link":up['image_link'], 
-        "start_time": str(up['start_time'])
-      })
-  past_results = db.engine.execute(f"select * from artists join shows on shows.artist=artists.id join venues on shows.show_location=venues.id where artists.id={artist_id} and shows.start_time <= '{str(datetime.now().replace(microsecond=0))}'")
-  past_shows = [row for row in past_results]
-  past_shows_aggregated = []
-  for past in past_shows:
-    past_shows_aggregated.append({
-        "venue_id": past['id'],
-        "venue_name": past['ven_name'],
-        "venue_image_link":past['image_link'], 
-        "start_time": str(past['start_time'])
-      })
+  if data.join(Show).join(Venue).all():
+    data = data.join(Show).join(Venue).all()
   artist = data[0]
+  aggregated_shows = []
+  for element in artist.art_shows:
+    aggregated_shows.append(
+      {
+        "venue_id": element.ven_list.ven_name,
+        "venue_id": element.ven_list.id,
+        "venue_image_link":element.ven_list.image_link, 
+        "start_time": str(element.start_time)
+      }
+    )
+  aggregated_shows = get_sorted_shows(aggregated_shows)
   aggregated_data = {
     "id": artist.id,
     "name": artist.art_name,
@@ -241,10 +243,10 @@ def show_artist(artist_id):
     "seeking_venue": artist.looking_for_venue,
     "image_link": artist.image_link,
     "website": artist.web_link,
-    "past_shows": past_shows_aggregated, 
-    "upcoming_shows": upcoming_shows_aggregated,
-    "past_shows_count": len(past_shows_aggregated),
-    "upcoming_shows_count": len(upcoming_shows_aggregated),
+    "past_shows": aggregated_shows['past'], 
+    "upcoming_shows": aggregated_shows['upcoming'],
+    "past_shows_count": len(aggregated_shows['past']),
+    "upcoming_shows_count": len(aggregated_shows['upcoming']),
     "seeking_description": artist.description
   }
   return render_template('pages/show_artist.html', artist=aggregated_data)
